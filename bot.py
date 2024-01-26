@@ -3,8 +3,8 @@ import requests
 from dotenv import load_dotenv
 import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Bot
-from telegram.ext import CallbackContext
 from datetime import datetime
+from datetime import time
 
 
 load_dotenv()
@@ -170,7 +170,11 @@ def create_and_start_bot():
     application.add_handler(set_reminder_handler)
     application.add_handler(unset_reminder_handler)
 
-    application.job_queue.run_repeating(daily_task, interval=60, first=0)
+    # schedule a job to run at 9 am
+    application.job_queue.run_daily(daily_task, time(hour=9, minute=0))
+    # schedule the same job to run at 9 pm
+    application.job_queue.run_daily(daily_task, time(hour=21, minute=0))
+
     # start polling
     application.run_polling()
 
