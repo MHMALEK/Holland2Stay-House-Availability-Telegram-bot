@@ -21,8 +21,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
         users = users_response.json()
 
         # Send the result to all users
-        for user in users["users"]:
-            chat_id = user["chat_id"]
+        for chat_id in users["chat_ids"]:
 
             # Send date message
             today = datetime.now().strftime("%A, %d %B %Y")
@@ -81,7 +80,6 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
         print(f"Error: {e}")
         await context.bot.send_message(chat_id=chat_id, text=f"An error occurred: {e}")
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await context.bot.send_message(
@@ -93,12 +91,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     try:
-        user = requests.get(f"{base_url}/users/{chat_id}").json()
+        user = requests.get(f"{base_url}/users/{chat_id}")
+        user = user.json()
         if "error" in user:
             if user["error"] == "User not found":
                 new_user = requests.post(
                     f"{base_url}/users/register", json={"chat_id": chat_id}
-                ).json()
+                )
+                new_user.raise_for_status()
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text="You're now registered. You will receive reminders every day at 9:00 AM. You can turn off reminders with /unset_reminder command.",
@@ -113,7 +113,7 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=chat_id,
                 text="You're already registered!  You can turn off reminders with /unset_reminder command.",
             )
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.HTTPError as e:
         print(f"Request error: {e}")
         await context.bot.send_message(
             chat_id=chat_id,
