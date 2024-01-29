@@ -101,7 +101,7 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 new_user.raise_for_status()
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text="You're now registered. You will receive reminders every day at 9:00 AM. You can turn off reminders with /unset_reminder command.",
+                    text="You're now registered. You will receive reminders every day. You can turn off reminders with /unset_reminder command.",
                 )
             else:
                 await context.bot.send_message(
@@ -172,8 +172,7 @@ def create_and_start_bot():
 
     # schedule a job to run at 9 am
     application.job_queue.run_daily(daily_task, time(hour=9, minute=0))
-    # schedule the same job to run at 9 pm
-    application.job_queue.run_daily(daily_task, time(hour=21, minute=0))
+
 
     # start polling
     application.run_polling()
