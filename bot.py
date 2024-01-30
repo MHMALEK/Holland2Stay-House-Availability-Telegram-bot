@@ -1,10 +1,11 @@
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
-import requests
+from telegram.error import Forbidden
 from dotenv import load_dotenv
 import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Bot
 from datetime import datetime
 from datetime import time
+import httpx
 
 
 load_dotenv()
@@ -13,16 +14,34 @@ telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 base_url = os.getenv("HOUSE_REMINDER_BASE_URL")
 
 
+async def fetch(url, method="get", data=None):
+    async with httpx.AsyncClient() as client:
+        if method == "get":
+            response = await client.get(url)
+        elif method == "post":
+            response = await client.post(url, json=data)
+        elif method == "delete":
+            response = await client.delete(url)
+        else:
+            raise ValueError(f"Invalid method: {method}")
+
+        if response.status_code == 404:
+            raise UserNotFoundError("User not found")
+
+        response.raise_for_status()
+        return response.json()
+
+
+class UserNotFoundError(Exception):
+    pass
+
+
 async def daily_task(context: ContextTypes.DEFAULT_TYPE):
     try:
         # Get all users
-        users_response = requests.get(f"{base_url}/users/list")
-        users_response.raise_for_status()  # Raises stored HTTPError, if one occurred.
-        users = users_response.json()
-
+        users = await fetch(f"{base_url}/users/list")
         # Send the result to all users
         for chat_id in users["chat_ids"]:
-
             # Send date message
             today = datetime.now().strftime("%A, %d %B %Y")
             message = await context.bot.send_message(
@@ -30,9 +49,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
             )
 
             # Call api to get list of houses
-            cities_response = requests.get(f"{base_url}/h2s/list/all")
-            cities_response.raise_for_status()  # Raises stored HTTPError, if one occurred.
-            cities_response = cities_response.json()
+            cities_response = await fetch(f"{base_url}/h2s/list/all")
 
             for city in cities_response["list"]:
                 # Check if results is a list
@@ -74,11 +91,14 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                 message_id=message.message_id,
                 text=f"Today is {today}. Here is the latest update:",
             )
+    except Forbidden as e:
+        print(f"The bot was blocked by the user with chat_id: {chat_id}")
 
     except Exception as e:
         # Handle error
         print(f"Error: {e}")
         await context.bot.send_message(chat_id=chat_id, text=f"An error occurred: {e}")
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -91,29 +111,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     try:
-        user = requests.get(f"{base_url}/users/{chat_id}")
-        user = user.json()
-        if "error" in user:
-            if user["error"] == "User not found":
-                new_user = requests.post(
-                    f"{base_url}/users/register", json={"chat_id": chat_id}
-                )
-                new_user.raise_for_status()
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text="You're now registered. You will receive reminders every day. You can turn off reminders with /unset_reminder command.",
-                )
-            else:
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text="Sorry, there was an error processing your request. Please try again later.",
-                )
-        else:
+        try:
+            await fetch(f"{base_url}/users/{chat_id}")
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="You're already registered!  You can turn off reminders with /unset_reminder command.",
+                text="You're already registered! You can turn off reminders with /unset_reminder command.",
             )
-    except requests.exceptions.HTTPError as e:
+        except UserNotFoundError:
+            await fetch(
+                f"{base_url}/users/register",
+                method="post",
+                data={"chat_id": chat_id},
+            )
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="You're now registered. You will receive reminders every day. You can turn off reminders with /unset_reminder command.",
+            )
+    except Exception as e:
         print(f"Request error: {e}")
         await context.bot.send_message(
             chat_id=chat_id,
@@ -124,13 +138,13 @@ async def set_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     try:
-        res = requests.delete(f"{base_url}/users/{chat_id}")
-        if res.status_code == 200:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text="You have been unregistered. You will not receive reminders anymore.",
-            )
-        elif res.status_code == 404:
+        await fetch(f"{base_url}/users/{chat_id}", method="delete")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="You have been unregistered. You will not receive reminders anymore.",
+        )
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
             await context.bot.send_message(
                 chat_id=chat_id,
                 text="User not found. You may have already been unregistered.",
@@ -140,7 +154,7 @@ async def unset_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=chat_id,
                 text="Sorry, there was an error processing your request. Please try again later.",
             )
-    except requests.exceptions.RequestException as e:
+    except Exception as e:
         print(f"Request error: {e}")
         await context.bot.send_message(
             chat_id=chat_id,
@@ -152,32 +166,27 @@ async def send_message(context, chatId, message):
     await context.bot.send_message(chat_id=chatId, text=message)
 
 
-async def test_task(context: ContextTypes.DEFAULT_TYPE):
-    print("Test task ran at: " + str(datetime.now()))
-    await context.bot.send_message(
-        chat_id=1949747267, text="Test task ran at: " + str(datetime.now())
-    )
-
-
 def create_and_start_bot():
-    application = ApplicationBuilder().token(telegram_bot_token).build()
+    try:
+        application = ApplicationBuilder().token(telegram_bot_token).build()
 
-    start_handler = CommandHandler("start", start)
-    set_reminder_handler = CommandHandler("set_reminder", set_reminder)
-    unset_reminder_handler = CommandHandler("unset_reminder", unset_reminder)
+        start_handler = CommandHandler("start", start)
+        set_reminder_handler = CommandHandler("set_reminder", set_reminder)
+        unset_reminder_handler = CommandHandler("unset_reminder", unset_reminder)
 
-    application.add_handler(start_handler)
-    application.add_handler(set_reminder_handler)
-    application.add_handler(unset_reminder_handler)
+        application.add_handler(start_handler)
+        application.add_handler(set_reminder_handler)
+        application.add_handler(unset_reminder_handler)
 
-    # schedule a job to run at 9 am
-    application.job_queue.run_daily(daily_task, time(hour=9, minute=0))
+        # schedule a job to run at 9 am
+        application.job_queue.run_daily(daily_task, time(hour=12, minute=0))
 
+        # start polling
+        application.run_polling()
 
-    # start polling
-    application.run_polling()
-
-    return application
+        return application
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 
 create_and_start_bot()
