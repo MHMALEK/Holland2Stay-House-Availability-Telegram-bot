@@ -18,7 +18,9 @@ base_url = os.getenv("HOUSE_REMINDER_BASE_URL")
 @retry(
     stop=stop_after_attempt(3),  # stop after 3 attempts
     wait=wait_fixed(5),  # wait 5 seconds between attempts
-    retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.NetworkError)),  # retry only for HTTPStatusError
+    retry=retry_if_exception_type(
+        (httpx.HTTPStatusError, httpx.NetworkError)
+    ),  # retry only for HTTPStatusError
 )
 async def fetch(url, method="get", data=None):
     async with httpx.AsyncClient(timeout=None) as client:
@@ -60,8 +62,6 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
 
             # Call api to get list of houses
             cities_response = await fetch(f"{base_url}/h2s/list/all")
-
-            print("cities_response", len(cities_response.keys()))
 
             for city in cities_response["list"]:
                 # Check if results is a list
@@ -202,7 +202,6 @@ def create_and_start_bot():
 
         # schedule a job to run at 16 pm
         application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
-        # application.job_queue.run_repeating(daily_task, interval=60, first=0)
 
         # start polling
         application.run_polling()
