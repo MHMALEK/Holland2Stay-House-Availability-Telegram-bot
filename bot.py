@@ -18,7 +18,7 @@ base_url = os.getenv("HOUSE_REMINDER_BASE_URL")
 @retry(
     stop=stop_after_attempt(3),  # stop after 3 attempts
     wait=wait_fixed(5),  # wait 5 seconds between attempts
-    retry=retry_if_exception_type(httpx.HTTPStatusError, httpx.NetworkError),  # retry only for HTTPStatusError
+    retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.NetworkError)),  # retry only for HTTPStatusError
 )
 async def fetch(url, method="get", data=None):
     async with httpx.AsyncClient(timeout=None) as client:
