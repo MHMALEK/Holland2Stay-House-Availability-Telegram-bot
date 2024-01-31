@@ -126,7 +126,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await context.bot.send_message(
         chat_id=chat_id,
-        text="asd! You can turn on reminders with /set_reminder command. We will send you about all available houses every day on this bot",
+        text="Hi! You can turn on reminders with /set_reminder command. We will send you about all available houses every day on this bot",
     )
 
 
