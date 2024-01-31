@@ -6,7 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Bot
 from datetime import datetime
 from datetime import time
 import httpx
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, 
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 
 load_dotenv()
