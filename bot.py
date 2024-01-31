@@ -48,8 +48,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
         # Get all users
         users = await fetch(f"{base_url}/users/list")
         # Send the result to all users
-        # for chat_id in users["chat_ids"]:
-        for chat_id in [1949747267]:
+        for chat_id in users["chat_ids"]:
             # Send date message
             today = datetime.now().strftime("%A, %d %B %Y")
             message = await context.bot.send_message(
@@ -202,8 +201,8 @@ def create_and_start_bot():
         application.add_handler(unset_reminder_handler)
 
         # schedule a job to run at 16 pm
-        # application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
-        application.job_queue.run_repeating(daily_task, interval=60, first=0)
+        application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
+        # application.job_queue.run_repeating(daily_task, interval=60, first=0)
 
         # start polling
         application.run_polling()
