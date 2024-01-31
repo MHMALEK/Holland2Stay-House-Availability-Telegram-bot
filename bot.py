@@ -6,7 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Bot
 from datetime import datetime
 from datetime import time
 import httpx
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type, 
 
 
 load_dotenv()
@@ -18,6 +18,7 @@ base_url = os.getenv("HOUSE_REMINDER_BASE_URL")
 @retry(
     stop=stop_after_attempt(3),  # stop after 3 attempts
     wait=wait_fixed(5),  # wait 5 seconds between attempts
+    retry=retry_if_exception_type(httpx.HTTPStatusError, httpx.NetworkError),  # retry only for HTTPStatusError
 )
 async def fetch(url, method="get", data=None):
     async with httpx.AsyncClient(timeout=None) as client:
@@ -48,7 +49,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
         users = await fetch(f"{base_url}/users/list")
         # Send the result to all users
         # for chat_id in users["chat_ids"]:
-        for chat_id in users["chat_ids"]:
+        for chat_id in [1949747267]:
             # Send date message
             today = datetime.now().strftime("%A, %d %B %Y")
             message = await context.bot.send_message(
@@ -201,8 +202,8 @@ def create_and_start_bot():
         application.add_handler(unset_reminder_handler)
 
         # schedule a job to run at 16 pm
-        application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
-        # application.job_queue.run_repeating(daily_task, interval=60, first=0)
+        # application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
+        application.job_queue.run_repeating(daily_task, interval=60, first=0)
 
         # start polling
         application.run_polling()
