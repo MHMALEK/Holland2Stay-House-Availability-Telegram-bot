@@ -59,7 +59,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                 today = datetime.now().strftime("%A, %d %B %Y")
                 message = await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"Today is {today}. Loading latest update...",
+                    text=f"Here is the most recent list of available residences for Thursday, 01 February 2024. Please note, this list does not include any lottery-based residences. Best of luck with your booking! If you have any questions, please contact the H2S team.",
                     read_timeout=60,
                     write_timeout=120,
                 )
