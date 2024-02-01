@@ -116,7 +116,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message.message_id,
-                    text=f"Today is {today}. Here is the latest update:",
+                    text=f"Here is the latest list of residents (excluding the lottary ones and only available to book) of {today}. Good luck!",
                     read_timeout=60,
                     write_timeout=120,
                 )
