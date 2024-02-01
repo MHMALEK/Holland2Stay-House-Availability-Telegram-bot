@@ -153,7 +153,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     intro_text = (
         "Welcome! This bot is designed to help you keep track of available houses. "
         "Use the /set_reminder command to activate daily reminders.\n\n"
-        "*Please note*: This service is not endorsed by H2S, and it's crucial that you do not disclose to them that "
+        "Please note: This service is not endorsed by H2S, and it's crucial that you do not disclose to them that "
         "you used this bot to find a house. We are simply providing a free tool to help you stay updated on "
         "availability. We are not responsible for any issues or disputes that may arise from your use of this bot or "
         "any information it provides. Thank you for your understanding."
@@ -161,7 +161,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=chat_id,
         text=intro_text,
-        parse_mode="Markdown",
     )
 
 
