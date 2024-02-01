@@ -44,108 +44,84 @@ class UserNotFoundError(Exception):
     pass
 
 
-async def daily_task(context: ContextTypes.DEFAULT_TYPE):
-    print("asdsadasd")
-    try:
-        # Get all users
-        users = await fetch(f"{base_url}/users/list")
-        print("users", users)
+async def generate_house_info_messages(cities_response):
+    messages = []
+    for city in cities_response["list"]:
+        if isinstance(city["results"], list):
+            for house in city["results"]:
+                message_text = "*{}*\n{}\nPrice: {}\nAvailable Date: {}".format(
+                    city["city_name"],
+                    house["name"],
+                    house["price"],
+                    house["available_date"],
+                )
+                keyboard = [[InlineKeyboardButton("More Info", url=house["url"])]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Send the result to all users
+                # Add the message text and reply_markup to the messages list
+                messages.append((message_text, reply_markup))
+        else:
+            messages.append(("*{}*\nNo house found".format(city["city_name"]), None))
+    return messages
+
+
+async def daily_task(context: ContextTypes.DEFAULT_TYPE):
+    try:
+        users = await fetch(f"{base_url}/users/list")
+        cities_response = await fetch(f"{base_url}/h2s/list/all")
+
+        base_message = f"Here is the most recent list of available residences for Thursday, 01 February 2024. Please note, this list does not include any lottery-based residences. Best of luck with your booking! If you have any questions, please contact the H2S team."
+
+        house_info_messages = await generate_house_info_messages(cities_response)
+
         for chat_id in users["chat_ids"]:
-            print("chat_id", chat_id)
             try:
-                # Send date message
-                today = datetime.now().strftime("%A, %d %B %Y")
                 message = await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"Here is the most recent list of available residences for Thursday, 01 February 2024. Please note, this list does not include any lottery-based residences. Best of luck with your booking! If you have any questions, please contact the H2S team.",
+                    text=base_message,
                     read_timeout=60,
                     write_timeout=120,
                 )
 
-                # Call api to get list of houses
-                cities_response = await fetch(f"{base_url}/h2s/list/all")
+                for message_text, reply_markup in house_info_messages:
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=message_text,
+                        parse_mode="Markdown",
+                        reply_markup=reply_markup,
+                        read_timeout=60,
+                        write_timeout=120,
+                    )
 
-                print("cities_response", cities_response)
-
-                for city in cities_response["list"]:
-                    # Check if results is a list
-                    if isinstance(city["results"], list):
-                        for house in city["results"]:
-                            # Format message
-                            message_text = (
-                                "*{}*\n{}\nPrice: {}\nAvailable Date: {}".format(
-                                    city["city_name"],
-                                    house["name"],
-                                    house["price"],
-                                    house["available_date"],
-                                )
-                            )
-                            print("message_text", message_text)
-
-                            # Create a link button
-                            keyboard = [
-                                [InlineKeyboardButton("More Info", url=house["url"])]
-                            ]
-                            reply_markup = InlineKeyboardMarkup(keyboard)
-
-                            # Send message
-                            await context.bot.send_message(
-                                chat_id=chat_id,
-                                text=message_text,
-                                parse_mode="Markdown",
-                                reply_markup=reply_markup,
-                                read_timeout=60,
-                                write_timeout=120,
-                            )
-                            print("chat_id", chat_id)
-
-                    else:
-                        # Send message with no house found
-                        await context.bot.send_message(
-                            chat_id=chat_id,
-                            text="*{}*\nNo house found".format(city["city_name"]),
-                            parse_mode="Markdown",
-                        )
-
-                # Edit loading message to say finished
-                await context.bot.edit_message_text(
+                await context.bot.send_message(
                     chat_id=chat_id,
-                    message_id=message.message_id,
-                    text=f"Here is the latest list of residents (excluding the lottary ones and only available to book) of {today}. Good luck!",
+                    text=f"If you do not wish to get these reminders anymore, you can turn them off with /unset_reminder command.",
                     read_timeout=60,
                     write_timeout=120,
                 )
-                print("chat_id", chat_id)
 
             except BadRequest as e:
                 if "chat not found" in str(e).lower():
-                    print(f"The chat with chat_id: {chat_id} was not found.")
-                    continue  # Skip to the next iteration
+                    print(f"Chat ID not found: {chat_id}")
                 else:
-                    raise e  # If it's a different BadRequest error, raise it.
+                    print(f"Unknown BadRequest error: {e}")
+                    raise e
 
             except Forbidden as e:
-                print(f"The bot was blocked by the user with chat_id: {chat_id}")
+                print(f"Bot was blocked by user with chat_id: {chat_id}")
                 try:
                     await fetch(f"{base_url}/users/{chat_id}", method="delete")
-                    continue
-
                 except Exception as e:
-                    print(f"1111 Request error: {e}")
+                    print(f"Error deleting user: {e}")
 
             except Exception as e:
-                # Handle error
-                print(f"222 Error: {e}")
+                print(f"Error sending message: {e}")
                 await context.bot.send_message(
                     chat_id=chat_id, text=f"An error occurred: {e}"
                 )
-                continue
 
     except Exception as e:
-        # Handle error
-        print(f"333 Error: {e}")
+        print(f"Error fetching data: {e}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -236,7 +212,7 @@ def create_and_start_bot():
 
         # schedule a job to run at 16 pm
         application.job_queue.run_daily(daily_task, time(hour=18, minute=30))
-        # application.job_queue.run_repeating(daily_task, interval=60, first=0)
+        # application.job_queue.run_repeating(daily_task, interval=60, first=1)
 
         # start polling
         application.run_polling()
