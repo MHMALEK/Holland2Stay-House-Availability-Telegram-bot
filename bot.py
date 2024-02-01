@@ -49,8 +49,11 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
     try:
         # Get all users
         users = await fetch(f"{base_url}/users/list")
+        print('users', users)
+
         # Send the result to all users
         for chat_id in users['chat_ids']:
+            print('chat_id', chat_id)
             try:
                 # Send date message
                 today = datetime.now().strftime("%A, %d %B %Y")
@@ -63,6 +66,9 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
 
                 # Call api to get list of houses
                 cities_response = await fetch(f"{base_url}/h2s/list/all")
+                
+                print('cities_response', cities_response)
+
 
                 for city in cities_response["list"]:
                     # Check if results is a list
@@ -77,6 +83,8 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                                     house["available_date"],
                                 )
                             )
+                            print('message_text', message_text)
+
 
                             # Create a link button
                             keyboard = [
@@ -93,6 +101,8 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                                 read_timeout=60,
                                 write_timeout=120,
                             )
+                            print('chat_id', chat_id)
+
 
                     else:
                         # Send message with no house found
@@ -110,6 +120,8 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                     read_timeout=60,
                     write_timeout=120,
                 )
+                print('chat_id', chat_id)
+
             except Forbidden as e:
                 print(f"The bot was blocked by the user with chat_id: {chat_id}")
 
@@ -117,18 +129,18 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                     await fetch(f"{base_url}/users/{chat_id}", method="delete")
 
                 except Exception as e:
-                    print(f"Request error: {e}")
+                    print(f"1111 Request error: {e}")
 
             except Exception as e:
                 # Handle error
-                print(f"Error: {e}")
+                print(f"222 Error: {e}")
                 await context.bot.send_message(
                     chat_id=chat_id, text=f"An error occurred: {e}"
                 )
 
     except Exception as e:
         # Handle error
-        print(f"Error: {e}")
+        print(f"333 Error: {e}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -210,8 +222,8 @@ def create_and_start_bot():
         application.add_handler(unset_reminder_handler)
 
         # schedule a job to run at 16 pm
-        application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
-        # application.job_queue.run_repeating(daily_task, interval=60, first=0)
+        # application.job_queue.run_daily(daily_task, time(hour=16, minute=0))
+        application.job_queue.run_repeating(daily_task, interval=60, first=0)
 
         # start polling
         application.run_polling()
