@@ -1,5 +1,5 @@
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
-from telegram.error import Forbidden
+from telegram.error import Forbidden, BadRequest, ChatMigrated
 from dotenv import load_dotenv
 import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, Bot
@@ -121,12 +121,20 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                     write_timeout=120,
                 )
                 print('chat_id', chat_id)
+                
+            except BadRequest as e:
+                if 'chat not found' in str(e).lower():
+                    print(f"The chat with chat_id: {chat_id} was not found.")
+                    continue  # Skip to the next iteration
+                else:
+                    raise e  # If it's a different BadRequest error, raise it.
 
             except Forbidden as e:
+                
                 print(f"The bot was blocked by the user with chat_id: {chat_id}")
-
                 try:
                     await fetch(f"{base_url}/users/{chat_id}", method="delete")
+                    continue
 
                 except Exception as e:
                     print(f"1111 Request error: {e}")
@@ -137,6 +145,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=chat_id, text=f"An error occurred: {e}"
                 )
+                continue
 
     except Exception as e:
         # Handle error
