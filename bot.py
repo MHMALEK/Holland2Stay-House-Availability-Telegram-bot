@@ -49,11 +49,11 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
     try:
         # Get all users
         users = await fetch(f"{base_url}/users/list")
-        print('users', users)
+        print("users", users)
 
         # Send the result to all users
-        for chat_id in users['chat_ids']:
-            print('chat_id', chat_id)
+        for chat_id in users["chat_ids"]:
+            print("chat_id", chat_id)
             try:
                 # Send date message
                 today = datetime.now().strftime("%A, %d %B %Y")
@@ -66,9 +66,8 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
 
                 # Call api to get list of houses
                 cities_response = await fetch(f"{base_url}/h2s/list/all")
-                
-                print('cities_response', cities_response)
 
+                print("cities_response", cities_response)
 
                 for city in cities_response["list"]:
                     # Check if results is a list
@@ -83,8 +82,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                                     house["available_date"],
                                 )
                             )
-                            print('message_text', message_text)
-
+                            print("message_text", message_text)
 
                             # Create a link button
                             keyboard = [
@@ -101,8 +99,7 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                                 read_timeout=60,
                                 write_timeout=120,
                             )
-                            print('chat_id', chat_id)
-
+                            print("chat_id", chat_id)
 
                     else:
                         # Send message with no house found
@@ -120,17 +117,16 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
                     read_timeout=60,
                     write_timeout=120,
                 )
-                print('chat_id', chat_id)
-                
+                print("chat_id", chat_id)
+
             except BadRequest as e:
-                if 'chat not found' in str(e).lower():
+                if "chat not found" in str(e).lower():
                     print(f"The chat with chat_id: {chat_id} was not found.")
                     continue  # Skip to the next iteration
                 else:
                     raise e  # If it's a different BadRequest error, raise it.
 
             except Forbidden as e:
-                
                 print(f"The bot was blocked by the user with chat_id: {chat_id}")
                 try:
                     await fetch(f"{base_url}/users/{chat_id}", method="delete")
@@ -154,9 +150,18 @@ async def daily_task(context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
+    intro_text = (
+        "Welcome! This bot is designed to help you keep track of available houses. "
+        "Use the /set_reminder command to activate daily reminders.\n\n"
+        "*Please note*: This service is not endorsed by H2S, and it's crucial that you do not disclose to them that "
+        "you used this bot to find a house. We are simply providing a free tool to help you stay updated on "
+        "availability. We are not responsible for any issues or disputes that may arise from your use of this bot or "
+        "any information it provides. Thank you for your understanding."
+    )
     await context.bot.send_message(
         chat_id=chat_id,
-        text="Hi! You can turn on reminders with /set_reminder command. We will send you about all available houses every day on this bot",
+        text=intro_text,
+        parse_mode="Markdown",
     )
 
 
