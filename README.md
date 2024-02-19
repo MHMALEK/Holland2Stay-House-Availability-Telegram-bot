@@ -1,4 +1,7 @@
 
+# ARCHIVED AND NOT MAINTAINED ANY MORE!
+When I saw that there were other projects that do the same thing, I decided not to move forward with this project. from now on, this project will be archived and will not be updated. if you need the same functionality you can search Git Hub for similar projects.
+
 Holland House Bot is a user-friendly Telegram bot that delivers daily updates about available houses. It interacts with a designated API to fetch house data and notifies registered users about the available options. Users have complete control over their subscription and can opt in or out of these notifications at any time.
 
 
